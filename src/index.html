@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星空钢琴 - Piano in the Deep Cosmos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        #piano-container {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 95vw;
+            overflow-x: auto;
+        }
+
+        #piano {
+            display: flex;
+            position: relative;
+            min-width: 800px;
+        }
+
+        .white-key {
+            width: 25px;
+            height: 120px;
+            background: linear-gradient(to bottom, #fff, #f0f0f0);
+            border: 1px solid #ccc;
+            border-radius: 0 0 4px 4px;
+            margin: 0 0.5px;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            font-size: 8px;
+            color: #666;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 5px;
+        }
+
+        .white-key:hover {
+            background: linear-gradient(to bottom, #f0f0f0, #e0e0e0);
+            transform: translateY(2px);
+        }
+
+        .white-key.active {
+            background: linear-gradient(to bottom, #e0e0e0, #d0d0d0);
+            transform: translateY(4px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .black-key {
+            width: 15px;
+            height: 75px;
+            background: linear-gradient(to bottom, #333, #000);
+            border: 1px solid #000;
+            border-radius: 0 0 2px 2px;
+            position: absolute;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            z-index: 3;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            font-size: 6px;
+            color: #fff;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 3px;
+        }
+
+        .black-key:hover {
+            background: linear-gradient(to bottom, #444, #111);
+            transform: translateY(2px);
+        }
+
+        .black-key.active {
+            background: linear-gradient(to bottom, #555, #222);
+            transform: translateY(4px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+        }
+
+        #title {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            font-size: 2em;
+            text-align: center;
+            z-index: 2;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            font-weight: 300;
+            letter-spacing: 3px;
+        }
+
+        #keyboard-guide {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            color: #fff;
+            font-size: 12px;
+            z-index: 2;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+            line-height: 1.4;
+        }
+
+        #keyboard-guide h3 {
+            margin: 0 0 10px 0;
+            color: #4a9eff;
+            font-size: 14px;
+        }
+
+        #keyboard-guide .octave {
+            margin: 8px 0;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        #keyboard-guide .octave-title {
+            font-weight: bold;
+            color: #87ceeb;
+            margin-bottom: 3px;
+        }
+
+        .smoke-particle {
+            position: absolute;
+            background: radial-gradient(circle, rgba(135, 206, 235, 0.8) 0%, rgba(100, 149, 237, 0.6) 30%, rgba(70, 130, 180, 0.4) 60%, transparent 100%);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: smokeFloat 3s ease-out forwards;
+            z-index: 10;
+        }
+
+        @keyframes smokeFloat {
+            0% {
+                opacity: 0.8;
+                transform: translateY(0) translateX(0) scale(0.5);
+            }
+            50% {
+                opacity: 0.6;
+                transform: translateY(-50px) translateX(var(--drift-x, 0px)) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-120px) translateX(var(--drift-x, 0px)) scale(1.5);
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="title">星空钢琴 - 49键专业版</div>
+    
+    <div id="keyboard-guide">
+        <h3>🎹 键盘映射指南</h3>
+        <div class="octave">
+            <div class="octave-title">高音区 (C5-C6)</div>
+            <div>数字行: 1!2@3 4$5%6^7 8</div>
+        </div>
+        <div class="octave">
+            <div class="octave-title">中音区 (C4-B4)</div>
+            <div>QWERTY: QWERT YUI OP[]</div>
+        </div>
+        <div class="octave">
+            <div class="octave-title">中低音区 (C3-B3)</div>
+            <div>ASDF: ASDFG HJK L;'↵</div>
+        </div>
+        <div class="octave">
+            <div class="octave-title">低音区 (C2-B2)</div>
+            <div>ZXCV: ZXCVB NM,./ `⇥</div>
+        </div>
+        <div style="margin-top: 10px; font-size: 10px; color: #aaa;">
+            点击钢琴键或按对应键盘按键演奏<br>
+            每个音符播放1秒，带蓝色烟雾效果
+        </div>
+    </div>
+    
+    <div id="piano-container">
+        <div id="piano"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script>
+        class StarryPiano {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.piano = document.getElementById('piano');
+                
+                // 星空相关
+                this.stars = [];
+                this.shootingStars = [];
+                
+                // 钢琴相关
+                this.synth = null;
+                this.keys = [];
+                this.activeNotes = new Map();
+                
+                this.init();
+            }
+
+            init() {
+                this.setupCanvas();
+                this.createStars();
+                this.setupPiano();
+                this.setupAudio();
+                this.animate();
+                
+                window.addEventListener('resize', () => this.setupCanvas());
+            }
+
+            setupCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            createStars() {
+                this.stars = [];
+                const numStars = 200;
+                
+                for (let i = 0; i < numStars; i++) {
+                    this.stars.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * this.canvas.height,
+                        size: Math.random() * 2 + 0.5,
+                        brightness: Math.random() * 0.8 + 0.2,
+                        twinkleSpeed: Math.random() * 0.02 + 0.01
+                    });
+                }
+            }
+
+            createShootingStar() {
+                if (Math.random() < 0.003) {
+                    this.shootingStars.push({
+                        x: Math.random() * this.canvas.width,
+                        y: 0,
+                        length: Math.random() * 80 + 20,
+                        speed: Math.random() * 5 + 3,
+                        angle: Math.random() * Math.PI / 4 + Math.PI / 4,
+                        opacity: 1
+                    });
+                }
+            }
+
+            setupPiano() {
+                // 49键钢琴：C2到C6 (4个完整八度 + 1个C)
+                const whiteKeys = [
+                    'C2', 'D2', 'E2', 'F2', 'G2', 'A2', 'B2',  // 第1八度
+                    'C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3',  // 第2八度
+                    'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4',  // 第3八度
+                    'C5', 'D5', 'E5', 'F5', 'G5', 'A5', 'B5',  // 第4八度
+                    'C6'  // 额外的C
+                ];
+                
+                const blackKeys = [
+                    // 第1八度黑键
+                    { note: 'C#2', position: 0 }, { note: 'D#2', position: 1 },
+                    { note: 'F#2', position: 3 }, { note: 'G#2', position: 4 }, { note: 'A#2', position: 5 },
+                    // 第2八度黑键
+                    { note: 'C#3', position: 7 }, { note: 'D#3', position: 8 },
+                    { note: 'F#3', position: 10 }, { note: 'G#3', position: 11 }, { note: 'A#3', position: 12 },
+                    // 第3八度黑键
+                    { note: 'C#4', position: 14 }, { note: 'D#4', position: 15 },
+                    { note: 'F#4', position: 17 }, { note: 'G#4', position: 18 }, { note: 'A#4', position: 19 },
+                    // 第4八度黑键
+                    { note: 'C#5', position: 21 }, { note: 'D#5', position: 22 },
+                    { note: 'F#5', position: 24 }, { note: 'G#5', position: 25 }, { note: 'A#5', position: 26 }
+                ];
+
+                // 创建白键
+                whiteKeys.forEach((note, index) => {
+                    const key = document.createElement('div');
+                    key.className = 'white-key';
+                    key.dataset.note = note;
+                    key.addEventListener('mousedown', () => this.playNote(note, key));
+                    
+                    // 添加音符标签
+                    key.textContent = note;
+                    
+                    this.piano.appendChild(key);
+                    this.keys.push({ element: key, note: note, type: 'white' });
+                });
+
+                // 创建黑键
+                blackKeys.forEach(({ note, position }) => {
+                    const key = document.createElement('div');
+                    key.className = 'black-key';
+                    key.dataset.note = note;
+                    key.style.left = `${position * 26 + 18}px`; // 调整位置计算
+                    key.addEventListener('mousedown', () => this.playNote(note, key));
+                    
+                    // 添加音符标签
+                    key.textContent = note;
+                    
+                    this.piano.appendChild(key);
+                    this.keys.push({ element: key, note: note, type: 'black' });
+                });
+
+                this.setupKeyboardEvents();
+            }
+
+            setupKeyboardEvents() {
+                // 49键钢琴完整键盘映射
+                const keyMap = {
+                    // 数字行 (1-0, -, =) - 用于最高八度
+                    '1': 'C5', '!': 'C#5', '2': 'D5', '@': 'D#5', '3': 'E5',
+                    '4': 'F5', '$': 'F#5', '5': 'G5', '%': 'G#5', '6': 'A5',
+                    '^': 'A#5', '7': 'B5', '8': 'C6',
+                    
+                    // QWERTY行 - 用于第4八度
+                    'q': 'C4', 'w': 'C#4', 'e': 'D4', 'r': 'D#4', 't': 'E4',
+                    'y': 'F4', 'u': 'F#4', 'i': 'G4', 'o': 'G#4', 'p': 'A4',
+                    '[': 'A#4', ']': 'B4',
+                    
+                    // ASDF行 - 用于第3八度 (中央C区域)
+                    'a': 'C3', 's': 'C#3', 'd': 'D3', 'f': 'D#3', 'g': 'E3',
+                    'h': 'F3', 'j': 'F#3', 'k': 'G3', 'l': 'G#3', ';': 'A3',
+                    "'": 'A#3', 'Enter': 'B3',
+                    
+                    // ZXCV行 - 用于第2八度
+                    'z': 'C2', 'x': 'C#2', 'c': 'D2', 'v': 'D#2', 'b': 'E2',
+                    'n': 'F2', 'm': 'F#2', ',': 'G2', '.': 'G#2', '/': 'A2',
+                    
+                    // 额外按键用于剩余音符
+                    '`': 'A#2', 'Tab': 'B2',
+                    
+                    // 功能键区域 - 备用映射
+                    'F1': 'C2', 'F2': 'D2', 'F3': 'E2', 'F4': 'F2', 'F5': 'G2', 'F6': 'A2', 'F7': 'B2',
+                    'F8': 'C3', 'F9': 'D3', 'F10': 'E3', 'F11': 'F3', 'F12': 'G3',
+                    
+                    // 方向键和数字键盘
+                    'ArrowLeft': 'A3', 'ArrowUp': 'B3', 'ArrowRight': 'C4', 'ArrowDown': 'D4',
+                    'Insert': 'E4', 'Delete': 'F4', 'Home': 'G4', 'End': 'A4',
+                    'PageUp': 'B4', 'PageDown': 'C5'
+                };
+
+                document.addEventListener('keydown', (e) => {
+                    const note = keyMap[e.key.toLowerCase()];
+                    if (note && !e.repeat) {
+                        const keyObj = this.keys.find(k => k.note === note);
+                        if (keyObj) {
+                            this.playNote(note, keyObj.element);
+                        }
+                    }
+                });
+            }
+
+            async setupAudio() {
+                try {
+                    await Tone.start();
+                    this.synth = new Tone.PolySynth(Tone.Synth, {
+                        oscillator: {
+                            type: "triangle"
+                        },
+                        envelope: {
+                            attack: 0.02,
+                            decay: 0.1,
+                            sustain: 0.3,
+                            release: 0.3
+                        }
+                    }).toDestination();
+
+                    const reverb = new Tone.Reverb(1).toDestination();
+                    this.synth.connect(reverb);
+                } catch (error) {
+                    console.error('音频初始化失败:', error);
+                }
+            }
+
+            playNote(note, keyElement) {
+                if (!this.synth) {
+                    this.setupAudio().then(() => {
+                        this.playNote(note, keyElement);
+                    });
+                    return;
+                }
+                
+                // 如果这个音符已经在播放，先停止它
+                if (this.activeNotes.has(note)) {
+                    const existingTimer = this.activeNotes.get(note);
+                    clearTimeout(existingTimer.stopTimer);
+                    this.synth.triggerRelease(note);
+                }
+
+                // 开始播放新的音符
+                this.synth.triggerAttack(note);
+                keyElement.classList.add('active');
+                
+                // 立即创建烟雾粒子效果
+                this.createSmokeParticles(keyElement);
+                
+                // 设置1秒后自动停止音符
+                const stopTimer = setTimeout(() => {
+                    this.synth.triggerRelease(note);
+                    keyElement.classList.remove('active');
+                    this.activeNotes.delete(note);
+                }, 1000);
+                
+                // 存储定时器引用
+                this.activeNotes.set(note, { stopTimer });
+            }
+
+            createSmokeParticles(keyElement) {
+                const rect = keyElement.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top;
+
+                // 创建多个烟雾粒子，形成烟雾效果
+                for (let i = 0; i < 8; i++) {
+                    setTimeout(() => {
+                        const smokeParticle = document.createElement('div');
+                        smokeParticle.className = 'smoke-particle';
+                        
+                        // 随机位置偏移，让烟雾更自然
+                        const offsetX = (Math.random() - 0.5) * 30;
+                        const offsetY = Math.random() * 10;
+                        smokeParticle.style.left = `${centerX + offsetX}px`;
+                        smokeParticle.style.top = `${centerY - offsetY}px`;
+                        
+                        // 随机大小
+                        const size = Math.random() * 15 + 10;
+                        smokeParticle.style.width = `${size}px`;
+                        smokeParticle.style.height = `${size}px`;
+                        
+                        // 随机漂移方向
+                        const driftX = (Math.random() - 0.5) * 60;
+                        smokeParticle.style.setProperty('--drift-x', `${driftX}px`);
+                        
+                        document.body.appendChild(smokeParticle);
+                        
+                        // 3秒后移除烟雾粒子
+                        setTimeout(() => {
+                            if (smokeParticle.parentNode) {
+                                smokeParticle.remove();
+                            }
+                        }, 3000);
+                    }, i * 50);
+                }
+            }
+
+            drawStars() {
+                this.stars.forEach(star => {
+                    star.brightness += Math.sin(Date.now() * star.twinkleSpeed) * 0.1;
+                    star.brightness = Math.max(0.2, Math.min(1, star.brightness));
+                    
+                    this.ctx.save();
+                    this.ctx.globalAlpha = star.brightness;
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.beginPath();
+                    this.ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    if (star.size > 1.5) {
+                        this.ctx.globalAlpha = star.brightness * 0.3;
+                        this.ctx.beginPath();
+                        this.ctx.arc(star.x, star.y, star.size * 3, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+                    
+                    this.ctx.restore();
+                });
+            }
+
+            drawShootingStars() {
+                this.shootingStars = this.shootingStars.filter(star => {
+                    star.x += Math.cos(star.angle) * star.speed;
+                    star.y += Math.sin(star.angle) * star.speed;
+                    star.opacity -= 0.01;
+                    
+                    if (star.opacity <= 0 || star.x > this.canvas.width || star.y > this.canvas.height) {
+                        return false;
+                    }
+                    
+                    this.ctx.save();
+                    this.ctx.globalAlpha = star.opacity;
+                    
+                    const gradient = this.ctx.createLinearGradient(
+                        star.x, star.y,
+                        star.x - Math.cos(star.angle) * star.length,
+                        star.y - Math.sin(star.angle) * star.length
+                    );
+                    gradient.addColorStop(0, '#ffffff');
+                    gradient.addColorStop(0.5, '#87ceeb');
+                    gradient.addColorStop(1, 'transparent');
+                    
+                    this.ctx.strokeStyle = gradient;
+                    this.ctx.lineWidth = 2;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(star.x, star.y);
+                    this.ctx.lineTo(
+                        star.x - Math.cos(star.angle) * star.length,
+                        star.y - Math.sin(star.angle) * star.length
+                    );
+                    this.ctx.stroke();
+                    
+                    this.ctx.restore();
+                    return true;
+                });
+            }
+
+            drawNebula() {
+                const gradient = this.ctx.createRadialGradient(
+                    this.canvas.width * 0.3, this.canvas.height * 0.2, 0,
+                    this.canvas.width * 0.3, this.canvas.height * 0.2, this.canvas.width * 0.4
+                );
+                gradient.addColorStop(0, 'rgba(138, 43, 226, 0.1)');
+                gradient.addColorStop(0.5, 'rgba(75, 0, 130, 0.05)');
+                gradient.addColorStop(1, 'transparent');
+                
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                const gradient2 = this.ctx.createRadialGradient(
+                    this.canvas.width * 0.7, this.canvas.height * 0.6, 0,
+                    this.canvas.width * 0.7, this.canvas.height * 0.6, this.canvas.width * 0.3
+                );
+                gradient2.addColorStop(0, 'rgba(0, 100, 200, 0.08)');
+                gradient2.addColorStop(0.5, 'rgba(0, 50, 150, 0.04)');
+                gradient2.addColorStop(1, 'transparent');
+                
+                this.ctx.fillStyle = gradient2;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            animate() {
+                this.ctx.fillStyle = '#000011';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                this.drawNebula();
+                this.drawStars();
+                this.createShootingStar();
+                this.drawShootingStars();
+                
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', () => {
+            new StarryPiano();
+        });
+
+        // 点击开始音频
+        document.addEventListener('click', async () => {
+            if (Tone.context.state !== 'running') {
+                await Tone.start();
+            }
+        }, { once: true });
+    </script>
+</body>
+</html>

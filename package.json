@@ -1,0 +1,13 @@
+{
+  "name": "piano-in-the-deep-cosmos",
+  "version": "1.0.0",
+  "description": "一个在星空中的钢琴应用",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python -m http.server 8000",
+    "start": "python -m http.server 8000"
+  },
+  "keywords": ["piano", "music", "stars", "cosmos", "interactive"],
+  "author": "",
+  "license": "MIT"
+}
